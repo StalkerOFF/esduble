@@ -1,112 +1,167 @@
-# Инструкция по настройке авторизации
+# 🔐 Авторизация и Администрирование
 
-## Что было сделано
+## 📋 Что реализовано
 
-1. **Добавлена система авторизации** на сайте с использованием новой таблицы `app_users` в Supabase
-2. **Существующая таблица `sand_lists` не была изменена** - все данные сохранены
-3. **Создана новая таблица `app_users`** для хранения пользовательских аккаунтов
+### 1. Новая таблица `app_users` (не трогает `sand_lists`)
+- Хранение пользователей с хешированными паролями
+- Поля: email, password_hash, display_name, role, is_active, last_login
 
-## SQL код для создания новой таблицы
+### 2. Таблица настроек `auth_settings`
+- Управление регистрацией (включить/выключить)
+- Белый список email для регистрации
 
-Выполните следующий SQL код в панели управления Supabase (SQL Editor):
+### 3. 4 предустановленных админа
+| Логин | Пароль | Роль |
+|-------|--------|------|
+| admin1@sandtracker.ru | Admin123! | admin |
+| admin2@sandtracker.ru | Admin123! | admin |
+| admin3@sandtracker.ru | Admin123! | admin |
+| admin4@sandtracker.ru | Admin123! | admin |
+
+### 4. Режимы доступа
+- **Запрет регистрации** - только предустановленные пользователи
+- **Белый список** - регистрация только для указанных email
+- **Открытая регистрация** - любой может зарегистрироваться
+
+---
+
+## 🚀 Установка
+
+### Шаг 1: Выполните SQL в Supabase
+
+1. Откройте [Supabase Dashboard](https://supabase.com/dashboard)
+2. Перейдите в **SQL Editor**
+3. Скопируйте и выполните содержимое файла `app_users_schema.sql`
 
 ```sql
--- Таблица для авторизации пользователей (новая, не затрагивает sand_lists)
-CREATE TABLE IF NOT EXISTS app_users (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    display_name VARCHAR(100),
-    role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin')),
-    is_active BOOLEAN DEFAULT true,
-    last_login TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Индекс для быстрого поиска по email
-CREATE INDEX IF NOT EXISTS idx_app_users_email ON app_users(email);
-
--- Индекс для активных пользователей
-CREATE INDEX IF NOT EXISTS idx_app_users_active ON app_users(is_active) WHERE is_active = true;
-
--- Включаем RLS (Row Level Security)
-ALTER TABLE app_users ENABLE ROW LEVEL SECURITY;
-
--- Политика: пользователи видят только свои данные
-CREATE POLICY "Users can view own data" ON app_users
-    FOR SELECT
-    USING (true);
-
--- Политика: пользователи могут обновлять только свои данные
-CREATE POLICY "Users can update own data" ON app_users
-    FOR UPDATE
-    USING (true);
-
--- Политика: только авторизованные могут вставлять (регистрироваться)
-CREATE POLICY "Allow registration" ON app_users
-    FOR INSERT
-    WITH CHECK (true);
-
--- Триггер для обновления updated_at
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER update_app_users_updated_at
-    BEFORE UPDATE ON app_users
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+-- Выполните весь файл app_users_schema.sql
+-- Он создаст:
+-- - таблицу app_users
+-- - таблицу auth_settings  
+-- - 4 админских аккаунта
+-- - политики безопасности
 ```
 
-## Как это работает
+### Шаг 2: Настройте доступ
 
-### Функционал авторизации:
-- **Регистрация**: Пользователь может создать новый аккаунт с email, паролем и отображаемым именем
-- **Вход**: Авторизация по email и паролю
-- **Выход**: Кнопка выхода в верхней панели
-- **Сохранение сессии**: Данные пользователя сохраняются в localStorage
+По умолчанию регистрация **ЗАПРЕЩЕНА** - могут войти только 4 админа.
 
-### Безопасность:
-- Пароли хешируются с помощью SHA-256 перед сохранением
-- Проверка пароля при входе
-- Защита от дублирования email (уникальное ограничение)
+Для управления используйте команды ниже:
 
-### Интерфейс:
-- Кнопка "Войти" в верхней панели (видна когда пользователь не авторизован)
-- После входа отображается имя пользователя и кнопка "Выйти"
-- Модальное окно с переключением между входом и регистрацией
-
-## Важные примечания
-
-1. **Таблица `sand_lists` не была изменена** - все существующие данные песков сохранены
-2. **Новая таблица `app_users`** создана отдельно для системы авторизации
-3. В текущей реализации авторизация не ограничивает доступ к пескам (все видят все списки)
-4. При необходимости можно добавить привязку песков к пользователям (добавив поле `user_id` в таблицу `sand_lists`)
-
-## Дальнейшие улучшения (опционально)
-
-Если вы хотите, чтобы каждый пользователь видел только свои списки песков:
-
-1. Добавьте поле `user_id` в таблицу `sand_lists`:
 ```sql
-ALTER TABLE sand_lists ADD COLUMN user_id UUID REFERENCES app_users(id);
+-- ✅ Разрешить регистрацию всем
+UPDATE auth_settings SET is_registration_allowed = true WHERE id = 1;
+
+-- ✅ Запретить регистрацию (только админы)
+UPDATE auth_settings 
+SET is_registration_allowed = false, allowed_emails = ARRAY[]::TEXT[] 
+WHERE id = 1;
+
+-- ✅ Белый список email
+UPDATE auth_settings 
+SET is_registration_allowed = false,
+    allowed_emails = ARRAY['user1@company.com', 'user2@company.com']
+WHERE id = 1;
 ```
 
-2. Обновите код вставки, чтобы сохранять `user_id` текущего пользователя
+---
 
-3. Добавьте фильтрацию при загрузке списков:
-```javascript
-.from('sand_lists')
-.eq('user_id', currentUser.id)
+## 👥 Управление пользователями
+
+### Просмотр всех пользователей
+```sql
+SELECT id, email, display_name, role, is_active, created_at 
+FROM app_users ORDER BY created_at DESC;
 ```
 
-## Файлы проекта
+### Заблокировать пользователя
+```sql
+UPDATE app_users SET is_active = false WHERE email = 'user@example.com';
+```
 
-- `index.html` - основной файл с кодом авторизации
-- `app_users_schema.sql` - SQL схема для новой таблицы пользователей
-- `supabase_schema.sql` - оригинальная схема таблицы песков (без изменений)
+### Разблокировать пользователя
+```sql
+UPDATE app_users SET is_active = true WHERE email = 'user@example.com';
+```
+
+### Сделать пользователя админом
+```sql
+UPDATE app_users SET role = 'admin' WHERE email = 'user@example.com';
+```
+
+### Удалить пользователя
+```sql
+DELETE FROM app_users WHERE email = 'user@example.com';
+```
+
+---
+
+## 🎯 Сценарии использования
+
+### Сценарий 1: Только админы (рекомендуется)
+```sql
+UPDATE auth_settings 
+SET is_registration_allowed = false, 
+    allowed_emails = ARRAY[]::TEXT[]
+WHERE id = 1;
+```
+✅ Могут войти: admin1-4@sandtracker.ru  
+❌ Все остальные: не могут зарегистрироваться
+
+### Сценарий 2: Закрытая компания
+```sql
+UPDATE auth_settings 
+SET is_registration_allowed = false,
+    allowed_emails = ARRAY[
+        'ivanov@company.ru',
+        'petrov@company.ru',
+        'sidorov@company.ru'
+    ]
+WHERE id = 1;
+```
+✅ Могут зарегистрироваться: только из списка  
+❌ Все остальные: не могут
+
+### Сценарий 3: Открытая регистрация
+```sql
+UPDATE auth_settings SET is_registration_allowed = true WHERE id = 1;
+```
+✅ Может зарегистрироваться: любой
+
+---
+
+## 🔧 Как это работает
+
+1. **При попытке регистрации:**
+   - Проверяется таблица `auth_settings`
+   - Если `is_registration_allowed = true` → регистрация разрешена
+   - Если email в `allowed_emails` → регистрация разрешена
+   - Иначе → ошибка "Регистрация запрещена"
+
+2. **При входе:**
+   - Проверяется email и пароль
+   - Проверяется `is_active = true`
+   - При успехе → обновление `last_login`
+
+3. **RLS политики:**
+   - Пользователи видят только свои данные
+   - Регистрация контролируется через `auth_settings`
+
+---
+
+## 📁 Файлы
+
+| Файл | Описание |
+|------|----------|
+| `app_users_schema.sql` | Создание таблиц и 4 админов |
+| `index.html` | Обновлён с проверкой регистрации |
+
+---
+
+## ⚠️ Важно
+
+- ✅ Таблица `sand_lists` **НЕ ИЗМЕНЕНА**
+- ✅ Все старые данные сохранены
+- ✅ Используется новая таблица `app_users`
+- ✅ Пароли хешируются через SHA-256
+- ✅ RLS защищает данные пользователей
