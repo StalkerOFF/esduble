@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Песок - Трекер задач</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0d0d0d 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            overflow-x: hidden;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: rgba(30, 30, 30, 0.7);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            gap: 20px;
+        }
+
+        .list-tabs {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            flex: 1;
+            padding-bottom: 5px;
+        }
+
+        .list-tab {
+            background: rgba(40, 40, 40, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #888;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 120px;
+        }
+
+        .list-tab:hover {
+            background: rgba(60, 60, 60, 0.6);
+            color: #fff;
+        }
+
+        .list-tab.active {
+            background: rgba(80, 80, 80, 0.8);
+            border-color: rgba(255, 255, 255, 0.3);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .list-tab-rop {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .list-tab-date {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .list-info {
+            display: none;
+        }
+
+        .new-sand-btn {
+            background: linear-gradient(135deg, rgba(100, 100, 100, 0.3) 0%, rgba(50, 50, 50, 0.5) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .new-sand-btn:hover {
+            background: linear-gradient(135deg, rgba(120, 120, 120, 0.4) 0%, rgba(70, 70, 70, 0.6) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Main Container */
+        .main-container {
+            padding: 30px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Lists Container */
+        .lists-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        /* Sand List Card */
+        .sand-list-card {
+            background: rgba(30, 30, 30, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .sand-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .sand-list-title-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .sand-list-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .quick-check-btn {
+            background: rgba(60, 60, 60, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ccc;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .quick-check-btn:hover {
+            background: rgba(80, 80, 80, 0.7);
+            color: #fff;
+            border-color: #4a9eff;
+        }
+
+        .edit-btn {
+            background: rgba(80, 80, 80, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s ease;
+        }
+
+        .edit-btn:hover {
+            background: rgba(100, 100, 100, 0.6);
+        }
+
+        /* Table Styles */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 15px 12px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        th {
+            background: rgba(40, 40, 40, 0.8);
+            font-size: 13px;
+            font-weight: 600;
+            color: #ccc;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        td:first-child {
+            text-align: left;
+            font-weight: 500;
+            color: #fff;
+        }
+
+        tr:hover {
+            background: rgba(50, 50, 50, 0.3);
+        }
+
+        /* Checkbox Styles */
+        .checkbox-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .checkbox-wrapper input[type="checkbox"] {
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(30, 30, 30, 0.5);
+        }
+
+        .checkbox-wrapper input[type="checkbox"]:checked {
+            background: linear-gradient(135deg, #4a9eff 0%, #2d7dd2 100%);
+            border-color: #4a9eff;
+        }
+
+        .checkbox-wrapper input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .checkbox-wrapper input[type="checkbox"]:hover {
+            border-color: #4a9eff;
+        }
+
+        /* Control Item */
+        .control-item {
+            margin-top: 20px;
+            padding: 15px 20px;
+            background: rgba(40, 40, 40, 0.5);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .control-label {
+            font-size: 14px;
+            color: #ccc;
+            flex: 1;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: linear-gradient(135deg, rgba(30, 30, 30, 0.95) 0%, rgba(20, 20, 20, 0.98) 100%);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(40, 40, 40, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #4a9eff;
+            background: rgba(50, 50, 50, 0.6);
+        }
+
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-select option {
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .modal-btn-primary {
+            background: linear-gradient(135deg, #4a9eff 0%, #2d7dd2 100%);
+            color: #fff;
+        }
+
+        .modal-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 158, 255, 0.3);
+        }
+
+        .modal-btn-secondary {
+            background: rgba(60, 60, 60, 0.5);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-btn-secondary:hover {
+            background: rgba(80, 80, 80, 0.6);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .empty-state-text {
+            font-size: 16px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(30, 30, 30, 0.5);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(80, 80, 80, 0.5);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 100, 100, 0.6);
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="list-tabs" id="listTabs">
+            <!-- Tabs will be inserted here -->
+        </div>
+        <button class="new-sand-btn" onclick="openNewSandModal()">+ Новый песок</button>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <div class="lists-container" id="listsContainer">
+            <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <div class="empty-state-text">Списки пусты. Создайте новый песок!</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New/Edit Sand Modal -->
+    <div class="modal-overlay" id="sandModal">
+        <div class="modal">
+            <h2 class="modal-title" id="modalTitle">Новый песок</h2>
+            <form id="sandForm">
+                <input type="hidden" id="editId">
+                
+                <div class="form-group">
+                    <label class="form-label">РОП</label>
+                    <select class="form-select" id="ropSelect" required>
+                        <option value="">Выберите РОПа</option>
+                        <option value="Макаренко">Макаренко</option>
+                        <option value="Власов">Власов</option>
+                        <option value="Сайдаралиев">Сайдаралиев</option>
+                        <option value="Шабуров">Шабуров</option>
+                        <option value="Кочура">Кочура</option>
+                        <option value="Шахалиева">Шахалиева</option>
+                        <option value="Москвиченко">Москвиченко</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Дата</label>
+                    <input type="date" class="form-input" id="dateInput" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Тип работы</label>
+                    <select class="form-select" id="workTypeSelect" required>
+                        <option value="">Выберите тип</option>
+                        <option value="офис">Офис</option>
+                        <option value="удаленка">Удаленка</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Список фамилий и имен (каждый с новой строки)</label>
+                    <textarea class="form-textarea" id="namesTextarea" placeholder="Иванов Иван&#10;Петров Петр&#10;Сидоров Сидор" required></textarea>
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="button" class="modal-btn modal-btn-secondary" onclick="closeSandModal()">Отмена</button>
+                    <button type="submit" class="modal-btn modal-btn-primary">Сохранить</button>
+                </div>
+                <div class="modal-buttons" id="deleteButtonContainer" style="display: none;">
+                    <button type="button" class="modal-btn" style="background: linear-gradient(135deg, #ff4a4a 0%, #d22d2d 100%); color: #fff; width: 100%;" onclick="deleteCurrentList()">Удалить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://wnvjebxkfjqnyyzpsszc.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndudmplYnhrZmpxbnl5enBzc3pjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNTIzNzUsImV4cCI6MjA5MTcyODM3NX0.EqK7Sx1v-dCs4d0EQZuXJe3LaRZdF1p618ENQQpZcXU';
+        
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Column definitions
+        const OFFICE_COLUMNS = [
+            'Создать аккаунты Битрикс',
+            'Добавление на Libra',
+            'Создать ключи в росгварде',
+            'Налить холодку',
+            'Выдан внутренний номер<br>Проименован в PBX и GDocs',
+            'Отключить <br>акки невышедших <br>сотрудников',
+            'Техника отфоткана в инвентарку'
+        ];
+
+        const REMOTE_COLUMNS = [
+            'Создать аккаунты Битрикс',
+            'Добавление на Libra',
+            'Налить холодку',
+            'Настроить технику',
+            'Выдан внутренний номер<br>Проименован в PBX и GDocs',
+            'Отключить <br>акки невышедших <br>сотрудников'
+        ];
+
+        const ROPS_WITHOUT_LIBRA = ['Макаренко', 'Власов', 'Сайдаралиев', 'Шабуров'];
+
+        // State
+        let sandLists = [];
+        let currentListId = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSandLists();
+        });
+
+        // Load sand lists from Supabase
+        async function loadSandLists() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('sand_lists')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                
+                sandLists = data || [];
+                
+                if (sandLists.length > 0) {
+                    currentListId = sandLists[0].id;
+                    updateTopBar();
+                    renderLists();
+                }
+            } catch (error) {
+                console.error('Error loading sand lists:', error);
+                alert('Ошибка загрузки данных: ' + error.message);
+            }
+        }
+
+        // Update top bar with tabs
+        function updateTopBar() {
+            const tabsContainer = document.getElementById('listTabs');
+            
+            if (sandLists.length === 0) {
+                tabsContainer.innerHTML = '';
+                return;
+            }
+
+            tabsContainer.innerHTML = sandLists.map(list => `
+                <div class="list-tab ${list.id === currentListId ? 'active' : ''}" onclick="selectList('${list.id}')">
+                    <div class="list-tab-rop">${list.rop}</div>
+                    <div class="list-tab-date">${formatDate(list.date)}</div>
+                </div>
+            `).join('');
+        }
+
+        // Select a list
+        function selectList(listId) {
+            currentListId = listId;
+            updateTopBar();
+            renderLists();
+        }
+
+        // Format date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+        }
+
+        // Render only the selected list
+        function renderLists() {
+            const container = document.getElementById('listsContainer');
+            
+            if (sandLists.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-text">Списки пусты. Создайте новый песок!</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const currentList = sandLists.find(l => l.id === currentListId);
+            
+            if (!currentList) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-text">Список не найден</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const columns = getColumnsForList(currentList);
+            const names = currentList.names.split('\n').filter(n => n.trim());
+            
+            let tableHtml = `
+                <div class="sand-list-card">
+                    <div class="sand-list-header">
+                        <div class="sand-list-title-group">
+                            <div class="sand-list-title">${currentList.rop} - ${formatDate(currentList.date)} (${currentList.work_type === 'офис' ? 'Офис' : 'Удаленка'})</div>
+                            <button class="quick-check-btn" onclick="quickCheckAll('${currentList.id}', 'Создать аккаунты Битрикс')">Битрикс</button>
+                            ${columns.includes('Создать ключи в росгварде') ? `
+                                <button class="quick-check-btn" onclick="quickCheckAll('${currentList.id}', 'Создать ключи в росгварде')">Росгвардия</button>
+                            ` : ''}
+                            ${columns.includes('Техника отфоткана в инвентарку') ? `
+                                <button class="quick-check-btn" onclick="quickCheckAll('${currentList.id}', 'Техника отфоткана в инвентарку')">Фото</button>
+                            ` : ''}
+                        </div>
+                        <button class="edit-btn" onclick="openEditModal('${currentList.id}')">Редактировать</button>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ФИО</th>
+                                    ${columns.map(col => `<th>${col}</th>`).join('')}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${names.map(name => `
+                                    <tr>
+                                        <td>${name}</td>
+                                        ${columns.map(col => {
+                                            const cellId = `${currentList.id}_${sanitizeName(name)}_${sanitizeName(col)}`;
+                                            const isChecked = currentList.checkboxes && currentList.checkboxes[cellId] ? 'checked' : '';
+                                            return `
+                                                <td>
+                                                    <div class="checkbox-wrapper">
+                                                        <input type="checkbox" 
+                                                            data-list-id="${currentList.id}" 
+                                                            data-name="${name}" 
+                                                            data-column="${col}"
+                                                            ${isChecked}
+                                                            onchange="updateCheckbox(this)">
+                                                    </div>
+                                                </td>
+                                            `;
+                                        }).join('')}
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    ${currentList.work_type === 'офис' ? `
+                        <div class="control-item">
+                            <span class="control-label">Проконтролировать технику в классе песка</span>
+                            <div class="checkbox-wrapper">
+                                <input type="checkbox" 
+                                    data-list-id="${currentList.id}" 
+                                    data-control="class_technique"
+                                    ${currentList.checkboxes && currentList.checkboxes[`${currentList.id}_class_technique`] ? 'checked' : ''}
+                                    onchange="updateControlCheckbox(this)">
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            container.innerHTML = tableHtml;
+        }
+
+        // Get columns for a list
+        function getColumnsForList(list) {
+            let columns = list.work_type === 'офис' ? [...OFFICE_COLUMNS] : [...REMOTE_COLUMNS];
+            
+            // Remove Libra column for specific ROPs
+            if (ROPS_WITHOUT_LIBRA.includes(list.rop)) {
+                columns = columns.filter(col => col !== 'Добавление на Libra');
+            }
+            
+            return columns;
+        }
+
+        // Sanitize name for use in IDs
+        function sanitizeName(name) {
+            return name.replace(/[^a-zA-Zа-яА-Я0-9]/g, '_');
+        }
+
+        // Update checkbox
+        async function updateCheckbox(checkbox) {
+            const listId = checkbox.dataset.listId;
+            const name = checkbox.dataset.name;
+            const column = checkbox.dataset.column;
+            const cellId = `${listId}_${sanitizeName(name)}_${sanitizeName(column)}`;
+            
+            const list = sandLists.find(l => l.id === listId);
+            if (!list) return;
+
+            if (!list.checkboxes) {
+                list.checkboxes = {};
+            }
+            
+            list.checkboxes[cellId] = checkbox.checked;
+
+            try {
+                await supabaseClient
+                    .from('sand_lists')
+                    .update({ checkboxes: list.checkboxes })
+                    .eq('id', listId);
+            } catch (error) {
+                console.error('Error updating checkbox:', error);
+                checkbox.checked = !checkbox.checked;
+                alert('Ошибка сохранения: ' + error.message);
+            }
+        }
+
+        // Update control checkbox
+        async function updateControlCheckbox(checkbox) {
+            const listId = checkbox.dataset.listId;
+            const cellId = `${listId}_class_technique`;
+            
+            const list = sandLists.find(l => l.id === listId);
+            if (!list) return;
+
+            if (!list.checkboxes) {
+                list.checkboxes = {};
+            }
+            
+            list.checkboxes[cellId] = checkbox.checked;
+
+            try {
+                await supabaseClient
+                    .from('sand_lists')
+                    .update({ checkboxes: list.checkboxes })
+                    .eq('id', listId);
+            } catch (error) {
+                console.error('Error updating control checkbox:', error);
+                checkbox.checked = !checkbox.checked;
+                alert('Ошибка сохранения: ' + error.message);
+            }
+        }
+
+        // Quick check all checkboxes for a column
+        async function quickCheckAll(listId, columnName) {
+            const list = sandLists.find(l => l.id === listId);
+            if (!list) return;
+
+            if (!list.checkboxes) {
+                list.checkboxes = {};
+            }
+
+            const names = list.names.split('\n').filter(n => n.trim());
+            
+            // Set all checkboxes for this column to true
+            names.forEach(name => {
+                const cellId = `${listId}_${sanitizeName(name)}_${sanitizeName(columnName)}`;
+                list.checkboxes[cellId] = true;
+            });
+
+            try {
+                await supabaseClient
+                    .from('sand_lists')
+                    .update({ checkboxes: list.checkboxes })
+                    .eq('id', listId);
+                
+                // Re-render to show updated checkboxes
+                renderLists();
+            } catch (error) {
+                console.error('Error quick checking all:', error);
+                alert('Ошибка сохранения: ' + error.message);
+            }
+        }
+
+        // Open new sand modal
+        function openNewSandModal() {
+            document.getElementById('modalTitle').textContent = 'Новый песок';
+            document.getElementById('editId').value = '';
+            document.getElementById('sandForm').reset();
+            document.getElementById('sandModal').classList.add('active');
+        }
+
+        // Open edit modal
+        function openEditModal(listId) {
+            const list = sandLists.find(l => l.id === listId);
+            if (!list) return;
+
+            document.getElementById('modalTitle').textContent = 'Редактировать песок';
+            document.getElementById('editId').value = list.id;
+            document.getElementById('ropSelect').value = list.rop;
+            document.getElementById('dateInput').value = list.date;
+            document.getElementById('workTypeSelect').value = list.work_type;
+            document.getElementById('namesTextarea').value = list.names;
+            
+            document.getElementById('deleteButtonContainer').style.display = 'flex';
+            document.getElementById('sandModal').classList.add('active');
+        }
+
+        // Close sand modal
+        function closeSandModal() {
+            document.getElementById('sandModal').classList.remove('active');
+            document.getElementById('deleteButtonContainer').style.display = 'none';
+            document.getElementById('sandForm').reset();
+            document.getElementById('editId').value = '';
+        }
+
+        // Delete current list
+        async function deleteCurrentList() {
+            const editId = document.getElementById('editId').value;
+            if (!editId) return;
+
+            if (!confirm('Вы уверены, что хотите удалить этот список? Это действие нельзя отменить.')) {
+                return;
+            }
+
+            try {
+                const { error } = await supabaseClient
+                    .from('sand_lists')
+                    .delete()
+                    .eq('id', editId);
+
+                if (error) throw error;
+
+                // Remove from local state
+                sandLists = sandLists.filter(l => l.id !== editId);
+
+                // Update current list ID
+                if (currentListId === editId) {
+                    currentListId = sandLists.length > 0 ? sandLists[0].id : null;
+                }
+
+                updateTopBar();
+                renderLists();
+                closeSandModal();
+            } catch (error) {
+                console.error('Error deleting list:', error);
+                alert('Ошибка удаления: ' + error.message);
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('sandForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const editId = document.getElementById('editId').value;
+            const rop = document.getElementById('ropSelect').value;
+            const date = document.getElementById('dateInput').value;
+            const workType = document.getElementById('workTypeSelect').value;
+            const names = document.getElementById('namesTextarea').value;
+
+            if (!rop || !date || !workType || !names) {
+                alert('Заполните все поля');
+                return;
+            }
+
+            try {
+                if (editId) {
+                    // Update existing
+                    const list = sandLists.find(l => l.id === editId);
+                    const { data, error } = await supabaseClient
+                        .from('sand_lists')
+                        .update({
+                            rop,
+                            date,
+                            work_type: workType,
+                            names,
+                            checkboxes: list ? list.checkboxes : {}
+                        })
+                        .eq('id', editId)
+                        .select();
+
+                    if (error) throw error;
+                    
+                    const index = sandLists.findIndex(l => l.id === editId);
+                    if (index !== -1) {
+                        sandLists[index] = { ...sandLists[index], rop, date, work_type: workType, names };
+                    }
+                } else {
+                    // Create new
+                    const { data, error } = await supabaseClient
+                        .from('sand_lists')
+                        .insert([{
+                            rop,
+                            date,
+                            work_type: workType,
+                            names,
+                            checkboxes: {}
+                        }])
+                        .select();
+
+                    if (error) throw error;
+                    
+                    sandLists.unshift(data[0]);
+                    currentListId = data[0].id;
+                }
+
+                updateTopBar();
+                renderLists();
+                closeSandModal();
+            } catch (error) {
+                console.error('Error saving sand list:', error);
+                alert('Ошибка сохранения: ' + error.message);
+            }
+        });
+
+        // Close modal on overlay click
+        document.getElementById('sandModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('sandModal')) {
+                closeSandModal();
+            }
+        });
+    </script>
+</body>
+</html>
