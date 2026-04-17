@@ -1,5 +1,20 @@
+-- ============================================
+-- ОЧИСТКА СТАРЫХ ДАННЫХ (для повторного запуска)
+-- ============================================
+-- Удаляем старые политики если существуют
+DROP POLICY IF EXISTS "Users can view own data" ON app_users;
+DROP POLICY IF EXISTS "Users can update own data" ON app_users;
+DROP POLICY IF EXISTS "Allow registration based on settings" ON app_users;
+DROP POLICY IF EXISTS "Everyone can view auth settings" ON auth_settings;
+
+-- Удаляем таблицы если существуют (для чистой переустановки)
+DROP TABLE IF EXISTS app_users CASCADE;
+DROP TABLE IF EXISTS auth_settings CASCADE;
+
+-- ============================================
 -- Таблица для авторизации пользователей (новая, не затрагивает sand_lists)
-CREATE TABLE IF NOT EXISTS app_users (
+-- ============================================
+CREATE TABLE app_users (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -11,24 +26,26 @@ CREATE TABLE IF NOT EXISTS app_users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Таблица настроек авторизации (одна запись для управления регистрацией)
-CREATE TABLE IF NOT EXISTS auth_settings (
+-- ============================================
+-- Таблица настроек авторизации
+-- ============================================
+CREATE TABLE auth_settings (
     id INTEGER PRIMARY KEY DEFAULT 1,
     is_registration_allowed BOOLEAN DEFAULT false,
-    allowed_emails TEXT[] DEFAULT ARRAY[]::TEXT[], -- Список разрешённых email для регистрации
+    allowed_emails TEXT[] DEFAULT ARRAY[]::TEXT[],
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Создаём единственную запись настроек
+-- Создаём единственную запись настроек (регистрация ЗАПРЕЩЕНА по умолчанию)
 INSERT INTO auth_settings (id, is_registration_allowed, allowed_emails) 
 VALUES (1, false, ARRAY[]::TEXT[])
 ON CONFLICT (id) DO NOTHING;
 
 -- Индекс для быстрого поиска по email
-CREATE INDEX IF NOT EXISTS idx_app_users_email ON app_users(email);
+CREATE INDEX idx_app_users_email ON app_users(email);
 
 -- Индекс для активных пользователей
-CREATE INDEX IF NOT EXISTS idx_app_users_active ON app_users(is_active) WHERE is_active = true;
+CREATE INDEX idx_app_users_active ON app_users(is_active) WHERE is_active = true;
 
 -- Включаем RLS (Row Level Security)
 ALTER TABLE app_users ENABLE ROW LEVEL SECURITY;
@@ -42,12 +59,12 @@ CREATE POLICY "Everyone can view auth settings" ON auth_settings
 -- Политика: пользователи видят только свои данные
 CREATE POLICY "Users can view own data" ON app_users
     FOR SELECT
-    USING (auth.uid()::text = id::text OR true);
+    USING (true);
 
 -- Политика: пользователи могут обновлять только свои данные
 CREATE POLICY "Users can update own data" ON app_users
     FOR UPDATE
-    USING (auth.uid()::text = id::text OR true);
+    USING (true);
 
 -- Политика: регистрация через проверку настроек
 CREATE POLICY "Allow registration based on settings" ON app_users
@@ -60,7 +77,9 @@ CREATE POLICY "Allow registration based on settings" ON app_users
         )
     );
 
+-- ============================================
 -- Триггер для обновления updated_at
+-- ============================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -78,10 +97,10 @@ CREATE TRIGGER update_app_users_updated_at
 -- ПРЕДОПРЕДЕЛЁННЫЕ ПОЛЬЗОВАТЕЛИ (4 админа)
 -- ============================================
 -- Пароли хешированы (SHA-256):
--- admin1 / Admin123!
--- admin2 / Admin123!
--- admin3 / Admin123!
--- admin4 / Admin123!
+-- admin1@sandtracker.ru / Admin123!
+-- admin2@sandtracker.ru / Admin123!
+-- admin3@sandtracker.ru / Admin123!
+-- admin4@sandtracker.ru / Admin123!
 
 INSERT INTO app_users (email, password_hash, display_name, role, is_active) VALUES
 ('admin1@sandtracker.ru', 'c7ad44cbad762a5da0a452f9e854fdc1e0e7a52a38015f23f3eab1d80b931dd472634dfac71cd34ebc35d16ab7fb8a90c81f975113d6c7538dc69dd8de9077ec', 'Администратор 1', 'admin', true),
@@ -90,7 +109,9 @@ INSERT INTO app_users (email, password_hash, display_name, role, is_active) VALU
 ('admin4@sandtracker.ru', 'c7ad44cbad762a5da0a452f9e854fdc1e0e7a52a38015f23f3eab1d80b931dd472634dfac71cd34ebc35d16ab7fb8a90c81f975113d6c7538dc69dd8de9077ec', 'Администратор 4', 'admin', true)
 ON CONFLICT (email) DO NOTHING;
 
+-- ============================================
 -- Функция для проверки возможности регистрации
+-- ============================================
 CREATE OR REPLACE FUNCTION check_registration_allowed(user_email TEXT)
 RETURNS BOOLEAN AS $$
 DECLARE

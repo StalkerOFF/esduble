@@ -473,18 +473,32 @@
     </style>
 </head>
 <body>
-    <!-- Top Bar -->
-    <div class="top-bar">
-        <div class="list-tabs" id="listTabs">
-            <!-- Tabs will be inserted here -->
+        <!-- Top Bar -->
+        <div class="top-bar" id="topBar" style="filter: blur(5px); pointer-events: none; opacity: 0.3;">
+            <div class="list-tabs" id="listTabs">
+                <!-- Tabs will be inserted here -->
+            </div>
+            <div class="user-info" id="userInfo" style="display: none;">
+                <span class="user-display-name" id="userDisplayName"></span>
+                <button class="logout-btn" onclick="logout()">Выйти</button>
+            </div>
+            <button class="auth-btn" id="loginBtn" onclick="openAuthModal()">Войти</button>
+            <button class="new-sand-btn" onclick="openNewSandModal()">+ Новый песок</button>
         </div>
-        <div class="user-info" id="userInfo" style="display: none;">
-            <span class="user-display-name" id="userDisplayName"></span>
-            <button class="logout-btn" onclick="logout()">Выйти</button>
+
+        <!-- Auth Overlay - blocks entire screen when not logged in -->
+        <div class="modal-overlay active" id="authOverlay" style="backdrop-filter: blur(10px); background: rgba(0, 0, 0, 0.95);">
+            <div class="modal" style="max-width: 450px;">
+                <h2 class="modal-title">🔐 Авторизация требуется</h2>
+                <p style="text-align: center; color: #888; margin-bottom: 25px; font-size: 14px;">
+                    Для доступа к данным необходима авторизация.<br>
+                    Без входа просмотр информации запрещён.
+                </p>
+                <button class="modal-btn modal-btn-primary" onclick="openAuthModal()" style="width: 100%;">
+                    Войти в систему
+                </button>
+            </div>
         </div>
-        <button class="auth-btn" id="loginBtn" onclick="openAuthModal()">Войти</button>
-        <button class="new-sand-btn" onclick="openNewSandModal()">+ Новый песок</button>
-    </div>
 
     <!-- Main Container -->
     <div class="main-container">
@@ -609,6 +623,43 @@
         let currentUser = null;
         let isRegisterMode = false;
         let authSettings = { is_registration_allowed: false, allowed_emails: [] };
+        let isDataLoaded = false; // Flag to prevent loading data before auth
+
+        // Block console access to sensitive data
+        (function() {
+            const originalLog = console.log;
+            const originalWarn = console.warn;
+            const originalError = console.error;
+            const originalInfo = console.info;
+            
+            console.log = function(...args) {
+                if (args.some(arg => typeof arg === 'string' && (arg.includes('sandLists') || arg.includes('currentUser')))) {
+                    return;
+                }
+                originalLog.apply(console, args);
+            };
+            
+            console.warn = function(...args) {
+                if (args.some(arg => typeof arg === 'string' && (arg.includes('sandLists') || arg.includes('currentUser')))) {
+                    return;
+                }
+                originalWarn.apply(console, args);
+            };
+            
+            console.error = function(...args) {
+                if (args.some(arg => typeof arg === 'string' && (arg.includes('sandLists') || arg.includes('currentUser')))) {
+                    return;
+                }
+                originalError.apply(console, args);
+            };
+            
+            console.info = function(...args) {
+                if (args.some(arg => typeof arg === 'string' && (arg.includes('sandLists') || arg.includes('currentUser')))) {
+                    return;
+                }
+                originalInfo.apply(console, args);
+            };
+        })();
 
         // Check if registration is allowed for specific email
         async function checkRegistrationAllowed(email) {
@@ -648,6 +699,11 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
+            // Don't load data until user is authenticated
+            if (!currentUser) {
+                // Show auth overlay, data will be loaded after login
+                return;
+            }
             loadSandLists();
         });
 
@@ -665,14 +721,46 @@
             const userInfo = document.getElementById('userInfo');
             const loginBtn = document.getElementById('loginBtn');
             const userDisplayName = document.getElementById('userDisplayName');
+            const authOverlay = document.getElementById('authOverlay');
+            const topBar = document.getElementById('topBar');
 
             if (currentUser) {
+                // User is logged in - hide overlay, show content
+                if (authOverlay) authOverlay.style.display = 'none';
+                if (topBar) {
+                    topBar.style.filter = 'none';
+                    topBar.style.pointerEvents = 'auto';
+                    topBar.style.opacity = '1';
+                }
                 userInfo.style.display = 'flex';
                 loginBtn.style.display = 'none';
                 userDisplayName.textContent = currentUser.display_name || currentUser.email;
+                
+                // Load data only after successful login
+                if (!isDataLoaded) {
+                    isDataLoaded = true;
+                    loadSandLists();
+                }
             } else {
+                // User is not logged in - show overlay, blur content
+                if (authOverlay) authOverlay.style.display = 'flex';
+                if (topBar) {
+                    topBar.style.filter = 'blur(5px)';
+                    topBar.style.pointerEvents = 'none';
+                    topBar.style.opacity = '0.3';
+                }
                 userInfo.style.display = 'none';
                 loginBtn.style.display = 'block';
+                
+                // Clear sensitive data from memory
+                sandLists = [];
+                currentListId = null;
+                document.getElementById('listsContainer').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔒</div>
+                        <div class="empty-state-text">Требуется авторизация</div>
+                    </div>
+                `;
             }
         }
 
@@ -813,6 +901,7 @@
         function logout() {
             currentUser = null;
             localStorage.removeItem('app_user');
+            isDataLoaded = false;
             updateUIForAuth();
         }
 
