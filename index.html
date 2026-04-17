@@ -608,6 +608,38 @@
         // Auth State
         let currentUser = null;
         let isRegisterMode = false;
+        let authSettings = { is_registration_allowed: false, allowed_emails: [] };
+
+        // Check if registration is allowed for specific email
+        async function checkRegistrationAllowed(email) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('auth_settings')
+                    .select('is_registration_allowed, allowed_emails')
+                    .eq('id', 1)
+                    .single();
+
+                if (error) throw error;
+
+                authSettings = {
+                    is_registration_allowed: data?.is_registration_allowed || false,
+                    allowed_emails: data?.allowed_emails || []
+                };
+
+                if (authSettings.is_registration_allowed) {
+                    return true;
+                }
+
+                if (authSettings.allowed_emails && authSettings.allowed_emails.includes(email)) {
+                    return true;
+                }
+
+                return false;
+            } catch (error) {
+                console.error('Error checking registration:', error);
+                return false;
+            }
+        }
 
         // State
         let sandLists = [];
@@ -656,7 +688,7 @@
         }
 
         // Toggle between login and register mode
-        function toggleAuthMode() {
+        async function toggleAuthMode() {
             isRegisterMode = !isRegisterMode;
             const title = document.getElementById('authModalTitle');
             const submitBtn = document.getElementById('authSubmitBtn');
@@ -664,6 +696,17 @@
             const displayNameGroup = document.getElementById('displayNameGroup');
 
             if (isRegisterMode) {
+                // Check registration settings when switching to registration mode
+                const email = document.getElementById('authEmail').value;
+                if (email) {
+                    const isAllowed = await checkRegistrationAllowed(email);
+                    if (!isAllowed) {
+                        alert('Регистрация в данный момент запрещена. Обратитесь к администратору.');
+                        isRegisterMode = false;
+                        return;
+                    }
+                }
+                
                 title.textContent = 'Регистрация';
                 submitBtn.textContent = 'Зарегистрироваться';
                 toggleBtn.textContent = 'У меня есть аккаунт';
@@ -691,6 +734,12 @@
 
             try {
                 if (isRegisterMode) {
+                    // Check if registration is allowed
+                    const isAllowed = await checkRegistrationAllowed(email);
+                    if (!isAllowed) {
+                        throw new Error('Регистрация запрещена. Обратитесь к администратору.');
+                    }
+
                     // Registration - create new user
                     const passwordHash = await hashPassword(password);
                     
