@@ -35,6 +35,52 @@
             gap: 20px;
         }
 
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-shrink: 0;
+        }
+
+        .user-display-name {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .auth-btn {
+            background: linear-gradient(135deg, #4a9eff 0%, #2d7dd2 100%);
+            border: none;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(74, 158, 255, 0.3);
+        }
+
+        .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(74, 158, 255, 0.4);
+        }
+
+        .logout-btn {
+            background: rgba(60, 60, 60, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: rgba(80, 80, 80, 0.6);
+        }
+
         .list-tabs {
             display: flex;
             gap: 10px;
@@ -432,6 +478,11 @@
         <div class="list-tabs" id="listTabs">
             <!-- Tabs will be inserted here -->
         </div>
+        <div class="user-info" id="userInfo" style="display: none;">
+            <span class="user-display-name" id="userDisplayName"></span>
+            <button class="logout-btn" onclick="logout()">Выйти</button>
+        </div>
+        <button class="auth-btn" id="loginBtn" onclick="openAuthModal()">Войти</button>
         <button class="new-sand-btn" onclick="openNewSandModal()">+ Новый песок</button>
     </div>
 
@@ -442,6 +493,34 @@
                 <div class="empty-state-icon">📋</div>
                 <div class="empty-state-text">Списки пусты. Создайте новый песок!</div>
             </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal">
+            <h2 class="modal-title" id="authModalTitle">Вход</h2>
+            <form id="authForm">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="authEmail" required placeholder="your@email.com">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" class="form-input" id="authPassword" required minlength="6">
+                </div>
+
+                <div class="form-group" id="displayNameGroup" style="display: none;">
+                    <label class="form-label">Имя (отображаемое)</label>
+                    <input type="text" class="form-input" id="authDisplayName" placeholder="Ваше имя">
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="button" class="modal-btn modal-btn-secondary" id="toggleAuthMode" onclick="toggleAuthMode()">Регистрация</button>
+                    <button type="submit" class="modal-btn modal-btn-primary" id="authSubmitBtn">Войти</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -526,14 +605,182 @@
 
         const ROPS_WITHOUT_LIBRA = ['Макаренко', 'Власов', 'Сайдаралиев', 'Шабуров'];
 
+        // Auth State
+        let currentUser = null;
+        let isRegisterMode = false;
+
         // State
         let sandLists = [];
         let currentListId = null;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
             loadSandLists();
         });
+
+        // Check if user is already logged in
+        function checkAuth() {
+            const savedUser = localStorage.getItem('app_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                updateUIForAuth();
+            }
+        }
+
+        // Update UI based on auth state
+        function updateUIForAuth() {
+            const userInfo = document.getElementById('userInfo');
+            const loginBtn = document.getElementById('loginBtn');
+            const userDisplayName = document.getElementById('userDisplayName');
+
+            if (currentUser) {
+                userInfo.style.display = 'flex';
+                loginBtn.style.display = 'none';
+                userDisplayName.textContent = currentUser.display_name || currentUser.email;
+            } else {
+                userInfo.style.display = 'none';
+                loginBtn.style.display = 'block';
+            }
+        }
+
+        // Open auth modal
+        function openAuthModal() {
+            document.getElementById('authModal').classList.add('active');
+        }
+
+        // Close auth modal
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+            document.getElementById('authForm').reset();
+        }
+
+        // Toggle between login and register mode
+        function toggleAuthMode() {
+            isRegisterMode = !isRegisterMode;
+            const title = document.getElementById('authModalTitle');
+            const submitBtn = document.getElementById('authSubmitBtn');
+            const toggleBtn = document.getElementById('toggleAuthMode');
+            const displayNameGroup = document.getElementById('displayNameGroup');
+
+            if (isRegisterMode) {
+                title.textContent = 'Регистрация';
+                submitBtn.textContent = 'Зарегистрироваться';
+                toggleBtn.textContent = 'У меня есть аккаунт';
+                displayNameGroup.style.display = 'block';
+            } else {
+                title.textContent = 'Вход';
+                submitBtn.textContent = 'Войти';
+                toggleBtn.textContent = 'Регистрация';
+                displayNameGroup.style.display = 'none';
+            }
+        }
+
+        // Handle auth form submission
+        document.getElementById('authForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            const displayName = document.getElementById('authDisplayName').value;
+
+            if (!email || !password) {
+                alert('Заполните все поля');
+                return;
+            }
+
+            try {
+                if (isRegisterMode) {
+                    // Registration - create new user
+                    const passwordHash = await hashPassword(password);
+                    
+                    const { data, error } = await supabaseClient
+                        .from('app_users')
+                        .insert([{
+                            email: email,
+                            password_hash: passwordHash,
+                            display_name: displayName || null
+                        }])
+                        .select()
+                        .single();
+
+                    if (error) {
+                        if (error.code === '23505') {
+                            throw new Error('Пользователь с таким email уже существует');
+                        }
+                        throw error;
+                    }
+
+                    // Auto login after registration
+                    currentUser = {
+                        id: data.id,
+                        email: data.email,
+                        display_name: data.display_name
+                    };
+                    localStorage.setItem('app_user', JSON.stringify(currentUser));
+                    updateUIForAuth();
+                    closeAuthModal();
+                    alert('Регистрация успешна!');
+                } else {
+                    // Login - find user and verify password
+                    const { data: user, error } = await supabaseClient
+                        .from('app_users')
+                        .select('id, email, display_name, password_hash')
+                        .eq('email', email)
+                        .eq('is_active', true)
+                        .single();
+
+                    if (error || !user) {
+                        throw new Error('Неверный email или пароль');
+                    }
+
+                    const isValid = await verifyPassword(password, user.password_hash);
+                    if (!isValid) {
+                        throw new Error('Неверный email или пароль');
+                    }
+
+                    // Update last login
+                    await supabaseClient
+                        .from('app_users')
+                        .update({ last_login: new Date().toISOString() })
+                        .eq('id', user.id);
+
+                    currentUser = {
+                        id: user.id,
+                        email: user.email,
+                        display_name: user.display_name
+                    };
+                    localStorage.setItem('app_user', JSON.stringify(currentUser));
+                    updateUIForAuth();
+                    closeAuthModal();
+                }
+            } catch (error) {
+                console.error('Auth error:', error);
+                alert('Ошибка: ' + error.message);
+            }
+        });
+
+        // Logout
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('app_user');
+            updateUIForAuth();
+        }
+
+        // Simple password hashing using Web Crypto API
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Verify password against hash
+        async function verifyPassword(password, hash) {
+            const inputHash = await hashPassword(password);
+            return inputHash === hash;
+        }
 
         // Load sand lists from Supabase
         async function loadSandLists() {
