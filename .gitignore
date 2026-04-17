@@ -1,0 +1,1 @@
+Nothing should be ignored based on the provided file changes, as they only include source/config files (README_AUTH.md, app_users_schema.sql, index.html) without any build artifacts, dependencies, or temporary files.
