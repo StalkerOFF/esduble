@@ -698,6 +698,7 @@
             const isOffice = list.work_type === 'офис';
             const columns = isOffice ? OFFICE_COLUMNS : REMOTE_COLUMNS;
             const checkboxes = list.checkboxes ? JSON.parse(list.checkboxes) : {};
+            const employeeCredentials = list.employee_credentials ? JSON.parse(list.employee_credentials) : {};
             
             const hasLibraColumn = !ROPS_WITHOUT_LIBRA.includes(list.rop);
             const displayColumns = isOffice && !hasLibraColumn 
@@ -723,11 +724,14 @@
                                 <tr>
                                     <th style="min-width: 200px;">Сотрудник</th>
                                     ${displayColumns.map(col => `<th>${col}</th>`).join('')}
+                                    <th style="min-width: 250px;">Учетные данные</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${names.map(name => {
                                     const nameCheckboxes = checkboxes[name] || {};
+                                    const creds = employeeCredentials[name] || { login: '', password: '', internal_number: '' };
+                                    const credId = `${list.id}-creds-${name.replace(/[^a-zA-Z0-9]/g, '_')}`;
                                     return `
                                         <tr>
                                             <td>${name}</td>
@@ -745,6 +749,19 @@
                                                     </td>
                                                 `;
                                             }).join('')}
+                                            <td>
+                                                <div style="display: flex; gap: 5px; align-items: center;" id="${credId}">
+                                                    <input type="text" placeholder="Логин" value="${creds.login || ''}" 
+                                                           onchange="updateEmployeeCredentials('${list.id}', '${name}', 'login', this.value)"
+                                                           style="width: 70px; padding: 4px; background: rgba(40, 40, 40, 0.5); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; color: #fff; font-size: 12px;">
+                                                    <input type="text" placeholder="Пароль" value="${creds.password || ''}" 
+                                                           onchange="updateEmployeeCredentials('${list.id}', '${name}', 'password', this.value)"
+                                                           style="width: 70px; padding: 4px; background: rgba(40, 40, 40, 0.5); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; color: #fff; font-size: 12px;">
+                                                    <input type="text" placeholder="Внутр. №" value="${creds.internal_number || ''}" 
+                                                           onchange="updateEmployeeCredentials('${list.id}', '${name}', 'internal_number', this.value)"
+                                                           style="width: 60px; padding: 4px; background: rgba(40, 40, 40, 0.5); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; color: #fff; font-size: 12px;">
+                                                </div>
+                                            </td>
                                         </tr>
                                     `;
                                 }).join('')}
@@ -838,6 +855,35 @@
                 renderLists();
             } catch (error) {
                 console.error('Error quick checking all:', error);
+            }
+        }
+
+        async function updateEmployeeCredentials(listId, name, field, value) {
+            try {
+                const list = sandLists.find(l => l.id === listId);
+                if (!list) return;
+                
+                const employeeCredentials = list.employee_credentials ? JSON.parse(list.employee_credentials) : {};
+                
+                if (!employeeCredentials[name]) {
+                    employeeCredentials[name] = { login: '', password: '', internal_number: '' };
+                }
+                employeeCredentials[name][field] = value;
+                
+                const response = await fetch(`${API_BASE_URL}/sand-lists/${listId}/employee-credentials`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentUser.token}`
+                    },
+                    body: JSON.stringify(employeeCredentials)
+                });
+                
+                if (!response.ok) throw new Error('Failed to update employee credentials');
+                
+                list.employee_credentials = JSON.stringify(employeeCredentials);
+            } catch (error) {
+                console.error('Error updating employee credentials:', error);
             }
         }
 

@@ -26,14 +26,15 @@ type Config struct {
 }
 
 type SandList struct {
-	ID         uuid.UUID       `json:"id"`
-	ROP        string          `json:"rop"`
-	Date       string          `json:"date"`
-	WorkType   string          `json:"work_type"`
-	Names      string          `json:"names"`
-	Checkboxes json.RawMessage `json:"checkboxes"`
-	CreatedAt  time.Time       `json:"created_at"`
-	UpdatedAt  time.Time       `json:"updated_at"`
+	ID                uuid.UUID       `json:"id"`
+	ROP               string          `json:"rop"`
+	Date              string          `json:"date"`
+	WorkType          string          `json:"work_type"`
+	Names             string          `json:"names"`
+	Checkboxes        json.RawMessage `json:"checkboxes"`
+	EmployeeCredentials json.RawMessage `json:"employee_credentials,omitempty"`
+	CreatedAt         time.Time       `json:"created_at"`
+	UpdatedAt         time.Time       `json:"updated_at"`
 }
 
 type User struct {
@@ -252,10 +253,10 @@ func createSandListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := `INSERT INTO sand_lists (rop, date, work_type, names, checkboxes, created_at, updated_at) 
-              VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) RETURNING id, created_at, updated_at`
+	query := `INSERT INTO sand_lists (rop, date, work_type, names, checkboxes, employee_credentials, created_at, updated_at) 
+              VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id, created_at, updated_at`
 
-	err := db.QueryRow(query, list.ROP, list.Date, list.WorkType, list.Names, list.Checkboxes).
+	err := db.QueryRow(query, list.ROP, list.Date, list.WorkType, list.Names, list.Checkboxes, list.EmployeeCredentials).
 		Scan(&list.ID, &list.CreatedAt, &list.UpdatedAt)
 	if err != nil {
 		log.Printf("Insert error: %v", err)
@@ -287,10 +288,10 @@ func updateSandListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := `UPDATE sand_lists SET rop = $1, date = $2, work_type = $3, names = $4, checkboxes = $5, updated_at = NOW() 
-              WHERE id = $6 RETURNING updated_at`
+	query := `UPDATE sand_lists SET rop = $1, date = $2, work_type = $3, names = $4, checkboxes = $5, employee_credentials = $6, updated_at = NOW() 
+              WHERE id = $7 RETURNING updated_at`
 
-	err = db.QueryRow(query, list.ROP, list.Date, list.WorkType, list.Names, list.Checkboxes, id).Scan(&list.UpdatedAt)
+	err = db.QueryRow(query, list.ROP, list.Date, list.WorkType, list.Names, list.Checkboxes, list.EmployeeCredentials, id).Scan(&list.UpdatedAt)
 	if err == sql.ErrNoRows {
 		http.Error(w, "Sand list not found", http.StatusNotFound)
 		return
@@ -371,6 +372,41 @@ func updateCheckboxesHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func updateEmployeeCredentialsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	idStr := strings.TrimPrefix(r.URL.Path, "/api/sand-lists/")
+	idStr = strings.TrimSuffix(idStr, "/employee-credentials")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	var employeeCredentials json.RawMessage
+	if err := json.NewDecoder(r.Body).Decode(&employeeCredentials); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	query := `UPDATE sand_lists SET employee_credentials = $1, updated_at = NOW() WHERE id = $2 RETURNING updated_at`
+	err = db.QueryRow(query, employeeCredentials, id).Scan(&time.Time{})
+	if err == sql.ErrNoRows {
+		http.Error(w, "Sand list not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		log.Printf("Update employee credentials error: %v", err)
+		http.Error(w, "Failed to update employee credentials", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func sandListsRouter(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 
@@ -389,6 +425,12 @@ func sandListsRouter(w http.ResponseWriter, r *http.Request) {
 	// Handle /api/sand-lists/{id}/checkboxes
 	if strings.HasSuffix(path, "/checkboxes") {
 		updateCheckboxesHandler(w, r)
+		return
+	}
+
+	// Handle /api/sand-lists/{id}/employee-credentials
+	if strings.HasSuffix(path, "/employee-credentials") {
+		updateEmployeeCredentialsHandler(w, r)
 		return
 	}
 
