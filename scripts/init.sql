@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS sand_lists (
     work_type VARCHAR(20) NOT NULL CHECK (work_type IN ('офис', 'удаленка')),
     names TEXT NOT NULL,
     checkboxes JSONB DEFAULT '{}',
+    employee_credentials JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
