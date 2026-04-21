@@ -1,0 +1,9 @@
+FROM postgres:15-alpine
+
+ENV POSTGRES_DB=sandtracker
+ENV POSTGRES_USER=sanduser
+ENV POSTGRES_PASSWORD=sandpass123
+
+COPY scripts/init.sql /docker-entrypoint-initdb.d/
+
+EXPOSE 5432

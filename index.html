@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Песок - Трекер задач</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0d0d0d 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            overflow-x: hidden;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: rgba(30, 30, 30, 0.7);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            gap: 20px;
+        }
+
+        .list-tabs {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            flex: 1;
+            padding-bottom: 5px;
+        }
+
+        .list-tab {
+            background: rgba(40, 40, 40, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #888;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 120px;
+        }
+
+        .list-tab:hover {
+            background: rgba(60, 60, 60, 0.6);
+            color: #fff;
+        }
+
+        .list-tab.active {
+            background: rgba(80, 80, 80, 0.8);
+            border-color: rgba(255, 255, 255, 0.3);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .list-tab-rop {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .list-tab-date {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .list-info {
+            display: none;
+        }
+
+        .new-sand-btn {
+            background: linear-gradient(135deg, rgba(100, 100, 100, 0.3) 0%, rgba(50, 50, 50, 0.5) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .new-sand-btn:hover {
+            background: linear-gradient(135deg, rgba(120, 120, 120, 0.4) 0%, rgba(70, 70, 70, 0.6) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Main Container */
+        .main-container {
+            padding: 30px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Lists Container */
+        .lists-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        /* Sand List Card */
+        .sand-list-card {
+            background: rgba(30, 30, 30, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .sand-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .sand-list-title-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .sand-list-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .quick-check-btn {
+            background: rgba(60, 60, 60, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ccc;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .quick-check-btn:hover {
+            background: rgba(80, 80, 80, 0.7);
+            color: #fff;
+            border-color: #4a9eff;
+        }
+
+        .edit-btn {
+            background: rgba(80, 80, 80, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s ease;
+        }
+
+        .edit-btn:hover {
+            background: rgba(100, 100, 100, 0.6);
+        }
+
+        /* Table Styles */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 15px 12px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        th {
+            background: rgba(40, 40, 40, 0.8);
+            font-size: 13px;
+            font-weight: 600;
+            color: #ccc;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        td:first-child {
+            text-align: left;
+            font-weight: 500;
+            color: #fff;
+        }
+
+        tr:hover {
+            background: rgba(50, 50, 50, 0.3);
+        }
+
+        /* Checkbox Styles */
+        .checkbox-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .checkbox-wrapper input[type="checkbox"] {
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(30, 30, 30, 0.5);
+        }
+
+        .checkbox-wrapper input[type="checkbox"]:checked {
+            background: linear-gradient(135deg, #4a9eff 0%, #2d7dd2 100%);
+            border-color: #4a9eff;
+        }
+
+        .checkbox-wrapper input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .checkbox-wrapper input[type="checkbox"]:hover {
+            border-color: #4a9eff;
+        }
+
+        /* Control Item */
+        .control-item {
+            margin-top: 20px;
+            padding: 15px 20px;
+            background: rgba(40, 40, 40, 0.5);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .control-label {
+            font-size: 14px;
+            color: #ccc;
+            flex: 1;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: linear-gradient(135deg, rgba(30, 30, 30, 0.95) 0%, rgba(20, 20, 20, 0.98) 100%);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(40, 40, 40, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #4a9eff;
+            background: rgba(50, 50, 50, 0.6);
+        }
+
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-select option {
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .modal-btn-primary {
+            background: linear-gradient(135deg, #4a9eff 0%, #2d7dd2 100%);
+            color: #fff;
+        }
+
+        .modal-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 158, 255, 0.3);
+        }
+
+        .modal-btn-secondary {
+            background: rgba(60, 60, 60, 0.5);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-btn-secondary:hover {
+            background: rgba(80, 80, 80, 0.6);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .empty-state-text {
+            font-size: 16px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(30, 30, 30, 0.5);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(80, 80, 80, 0.5);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 100, 100, 0.6);
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="list-tabs" id="listTabs">
+            <!-- Tabs will be inserted here -->
+        </div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <span id="userDisplayName" style="color: #888; font-size: 13px;"></span>
+            <button class="edit-btn" onclick="logout()" style="padding: 8px 16px; font-size: 13px;">Выйти</button>
+            <button class="new-sand-btn" onclick="openNewSandModal()">+ Новый песок</button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <div class="lists-container" id="listsContainer">
+            <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <div class="empty-state-text">Списки пусты. Создайте новый песок!</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New/Edit Sand Modal -->
+    <div class="modal-overlay" id="sandModal">
+        <div class="modal">
+            <h2 class="modal-title" id="modalTitle">Новый песок</h2>
+            <form id="sandForm">
+                <input type="hidden" id="editId">
+                
+                <div class="form-group">
+                    <label class="form-label">РОП</label>
+                    <select class="form-select" id="ropSelect" required>
+                        <option value="">Выберите РОПа</option>
+                        <option value="Макаренко">Макаренко</option>
+                        <option value="Власов">Власов</option>
+                        <option value="Сайдаралиев">Сайдаралиев</option>
+                        <option value="Шабуров">Шабуров</option>
+                        <option value="Кочура">Кочура</option>
+                        <option value="Шахалиева">Шахалиева</option>
+                        <option value="Москвиченко">Москвиченко</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Дата</label>
+                    <input type="date" class="form-input" id="dateInput" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Тип работы</label>
+                    <select class="form-select" id="workTypeSelect" required>
+                        <option value="">Выберите тип</option>
+                        <option value="офис">Офис</option>
+                        <option value="удаленка">Удаленка</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Список фамилий и имен (каждый с новой строки)</label>
+                    <textarea class="form-textarea" id="namesTextarea" placeholder="Иванов Иван&#10;Петров Петр&#10;Сидоров Сидор" required></textarea>
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="button" class="modal-btn modal-btn-secondary" onclick="closeSandModal()">Отмена</button>
+                    <button type="submit" class="modal-btn modal-btn-primary">Сохранить</button>
+                </div>
+                <div class="modal-buttons" id="deleteButtonContainer" style="display: none;">
+                    <button type="button" class="modal-btn" style="background: linear-gradient(135deg, #ff4a4a 0%, #d22d2d 100%); color: #fff; width: 100%;" onclick="deleteCurrentList()">Удалить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // API Configuration
+        const API_BASE_URL = '/api';
+        
+        // Session storage key для токена сессии
+        const SESSION_KEY = 'sand_session_token';
+        
+        // Проверка авторизации
+        function checkAuth() {
+            const sessionData = sessionStorage.getItem(SESSION_KEY);
+            if (!sessionData) {
+                window.location.replace('login.html');
+                return null;
+            }
+            
+            try {
+                const session = JSON.parse(sessionData);
+                if (session.expires && new Date(session.expires) <= new Date()) {
+                    sessionStorage.removeItem(SESSION_KEY);
+                    window.location.replace('login.html');
+                    return null;
+                }
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlSession = urlParams.get('session');
+                if (urlSession) {
+                    sessionStorage.setItem(SESSION_KEY, urlSession);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    return JSON.parse(urlSession);
+                }
+                
+                return session;
+            } catch (e) {
+                sessionStorage.removeItem(SESSION_KEY);
+                window.location.replace('login.html');
+                return null;
+            }
+        }
+        
+        const currentUser = checkAuth();
+        
+        // Column definitions
+        const OFFICE_COLUMNS = [
+            'Создать аккаунты Битрикс',
+            'Добавление на Libra',
+            'Создать ключи в росгварде',
+            'Налить холодку',
+            'Выдан внутренний номер<br>Проименован в PBX и GDocs',
+            'Отключить <br>акки невышедших <br>сотрудников',
+            'Техника отфоткана в инвентарку'
+        ];
+
+        const REMOTE_COLUMNS = [
+            'Создать аккаунты Битрикс',
+            'Добавление на Libra',
+            'Налить холодку',
+            'Настроить технику',
+            'Выдан внутренний номер<br>Проименован в PBX и GDocs',
+            'Отключить <br>акки невышедших <br>сотрудников'
+        ];
+
+        const ROPS_WITHOUT_LIBRA = ['Макаренко', 'Власов', 'Сайдаралиев', 'Шабуров'];
+
+        let sandLists = [];
+        let currentListId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSandLists();
+        });
+
+        async function loadSandLists() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/sand-lists`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentUser.token}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load sand lists');
+                
+                const data = await response.json();
+                sandLists = data || [];
+                
+                if (currentUser) {
+                    document.getElementById('userDisplayName').textContent = currentUser.displayName || currentUser.username;
+                }
+                
+                renderListTabs();
+                renderLists();
+            } catch (error) {
+                console.error('Error loading sand lists:', error);
+            }
+        }
+
+        function renderListTabs() {
+            const container = document.getElementById('listTabs');
+            const groupedByRopAndDate = {};
+            
+            sandLists.forEach(list => {
+                const key = `${list.rop}|${list.date}`;
+                if (!groupedByRopAndDate[key]) {
+                    groupedByRopAndDate[key] = [];
+                }
+                groupedByRopAndDate[key].push(list);
+            });
+            
+            const sortedKeys = Object.keys(groupedByRopAndDate).sort((a, b) => {
+                const [, dateA] = a.split('|');
+                const [, dateB] = b.split('|');
+                return new Date(dateB) - new Date(dateA);
+            });
+            
+            if (sortedKeys.length === 0) {
+                container.innerHTML = '<div style="color: #666; padding: 10px;">Нет списков</div>';
+                return;
+            }
+            
+            container.innerHTML = sortedKeys.map(key => {
+                const [rop, date] = key.split('|');
+                const lists = groupedByRopAndDate[key];
+                const totalEmployees = lists.reduce((sum, list) => {
+                    return sum + list.names.split('\n').filter(n => n.trim()).length;
+                }, 0);
+                
+                const formattedDate = new Date(date).toLocaleDateString('ru-RU', {
+                    day: 'numeric',
+                    month: 'long'
+                });
+                
+                return `
+                    <div class="list-tab active" onclick="scrollToList('${key}')">
+                        <span class="list-tab-rop">${rop}</span>
+                        <span class="list-tab-date">${formattedDate}</span>
+                        <span class="list-info">${lists.length} списка(ов), ${totalEmployees} сотрудников</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function scrollToList(key) {
+            const element = document.getElementById(`list-${key}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function renderLists() {
+            const container = document.getElementById('listsContainer');
+            
+            if (sandLists.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-text">Списки пусты. Создайте новый песок!</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            const groupedByRopAndDate = {};
+            
+            sandLists.forEach(list => {
+                const key = `${list.rop}|${list.date}`;
+                if (!groupedByRopAndDate[key]) {
+                    groupedByRopAndDate[key] = [];
+                }
+                groupedByRopAndDate[key].push(list);
+            });
+            
+            const sortedKeys = Object.keys(groupedByRopAndDate).sort((a, b) => {
+                const [, dateA] = a.split('|');
+                const [, dateB] = b.split('|');
+                return new Date(dateB) - new Date(dateA);
+            });
+            
+            container.innerHTML = sortedKeys.map(key => {
+                const [rop, date] = key.split('|');
+                const lists = groupedByRopAndDate[key];
+                
+                const formattedDate = new Date(date).toLocaleDateString('ru-RU', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                });
+                
+                return `
+                    <div class="lists-container" id="list-${key}">
+                        ${lists.map(list => createSandListCard(list)).join('')}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function createSandListCard(list) {
+            const names = list.names.split('\n').filter(n => n.trim());
+            const isOffice = list.work_type === 'офис';
+            const columns = isOffice ? OFFICE_COLUMNS : REMOTE_COLUMNS;
+            const checkboxes = list.checkboxes ? JSON.parse(list.checkboxes) : {};
+            
+            const hasLibraColumn = !ROPS_WITHOUT_LIBRA.includes(list.rop);
+            const displayColumns = isOffice && !hasLibraColumn 
+                ? columns.filter(c => !c.includes('Libra')) 
+                : columns;
+            
+            return `
+                <div class="sand-list-card">
+                    <div class="sand-list-header">
+                        <div class="sand-list-title-group">
+                            <h3 class="sand-list-title">${list.rop} - ${new Date(list.date).toLocaleDateString('ru-RU')}</h3>
+                            <span style="background: ${isOffice ? 'rgba(74, 158, 255, 0.2)' : 'rgba(74, 255, 158, 0.2)'}; color: ${isOffice ? '#4a9eff' : '#4aff9e'}; padding: 4px 12px; border-radius: 20px; font-size: 12px; border: 1px solid ${isOffice ? 'rgba(74, 158, 255, 0.3)' : 'rgba(74, 255, 158, 0.3)'};">
+                                ${list.work_type}
+                            </span>
+                            <button class="quick-check-btn" onclick="quickCheckAll('${list.id}')">✓ Все</button>
+                        </div>
+                        <button class="edit-btn" onclick="openEditSandModal('${list.id}')">Редактировать</button>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="min-width: 200px;">Сотрудник</th>
+                                    ${displayColumns.map(col => `<th>${col}</th>`).join('')}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${names.map(name => {
+                                    const nameCheckboxes = checkboxes[name] || {};
+                                    return `
+                                        <tr>
+                                            <td>${name}</td>
+                                            ${displayColumns.map(col => {
+                                                const checkboxId = `${list.id}-${name}-${col}`;
+                                                const isChecked = nameCheckboxes[col] ? 'checked' : '';
+                                                return `
+                                                    <td>
+                                                        <div class="checkbox-wrapper">
+                                                            <input type="checkbox" 
+                                                                   id="${checkboxId}" 
+                                                                   ${isChecked} 
+                                                                   onchange="updateCheckbox('${list.id}', '${name}', '${col.replace(/'/g, "\\'")}', this.checked)">
+                                                        </div>
+                                                    </td>
+                                                `;
+                                            }).join('')}
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="control-item">
+                        <span class="control-label">Прогресс: ${calculateProgress(checkboxes, names.length, displayColumns.length)}%</span>
+                        <div style="flex: 1; background: rgba(60, 60, 60, 0.5); border-radius: 10px; height: 8px; overflow: hidden;">
+                            <div style="background: linear-gradient(90deg, #4a9eff 0%, #2d7dd2 100%); height: 100%; width: ${calculateProgress(checkboxes, names.length, displayColumns.length)}%; transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function calculateProgress(checkboxes, totalNames, totalColumns) {
+            let totalChecks = 0;
+            let possibleChecks = totalNames * totalColumns;
+            
+            Object.values(checkboxes).forEach(nameCheckboxes => {
+                totalChecks += Object.values(nameCheckboxes).filter(v => v).length;
+            });
+            
+            return possibleChecks > 0 ? Math.round((totalChecks / possibleChecks) * 100) : 0;
+        }
+
+        async function updateCheckbox(listId, name, column, checked) {
+            try {
+                const list = sandLists.find(l => l.id === listId);
+                if (!list) return;
+                
+                const checkboxes = list.checkboxes ? JSON.parse(list.checkboxes) : {};
+                
+                if (!checkboxes[name]) {
+                    checkboxes[name] = {};
+                }
+                checkboxes[column] = checked;
+                
+                const response = await fetch(`${API_BASE_URL}/sand-lists/${listId}/checkboxes`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentUser.token}`
+                    },
+                    body: JSON.stringify(checkboxes)
+                });
+                
+                if (!response.ok) throw new Error('Failed to update checkbox');
+                
+                list.checkboxes = JSON.stringify(checkboxes);
+                renderLists();
+            } catch (error) {
+                console.error('Error updating checkbox:', error);
+            }
+        }
+
+        async function quickCheckAll(listId) {
+            try {
+                const list = sandLists.find(l => l.id === listId);
+                if (!list) return;
+                
+                const names = list.names.split('\n').filter(n => n.trim());
+                const isOffice = list.work_type === 'офис';
+                const hasLibraColumn = !ROPS_WITHOUT_LIBRA.includes(list.rop);
+                const columns = isOffice && !hasLibraColumn 
+                    ? OFFICE_COLUMNS.filter(c => !c.includes('Libra')) 
+                    : (isOffice ? OFFICE_COLUMNS : REMOTE_COLUMNS);
+                
+                const checkboxes = {};
+                names.forEach(name => {
+                    checkboxes[name] = {};
+                    columns.forEach(col => {
+                        checkboxes[name][col] = true;
+                    });
+                });
+                
+                const response = await fetch(`${API_BASE_URL}/sand-lists/${listId}/checkboxes`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentUser.token}`
+                    },
+                    body: JSON.stringify(checkboxes)
+                });
+                
+                if (!response.ok) throw new Error('Failed to update checkboxes');
+                
+                list.checkboxes = JSON.stringify(checkboxes);
+                renderLists();
+            } catch (error) {
+                console.error('Error quick checking all:', error);
+            }
+        }
+
+        function openNewSandModal() {
+            document.getElementById('sandForm').reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('modalTitle').textContent = 'Новый песок';
+            document.getElementById('deleteButtonContainer').style.display = 'none';
+            document.getElementById('sandModal').classList.add('active');
+            
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('dateInput').value = today;
+        }
+
+        function closeSandModal() {
+            document.getElementById('sandModal').classList.remove('active');
+            currentListId = null;
+        }
+
+        function openEditSandModal(listId) {
+            const list = sandLists.find(l => l.id === listId);
+            if (!list) return;
+            
+            currentListId = listId;
+            document.getElementById('editId').value = list.id;
+            document.getElementById('modalTitle').textContent = 'Редактировать песок';
+            document.getElementById('ropSelect').value = list.rop;
+            document.getElementById('dateInput').value = list.date;
+            document.getElementById('workTypeSelect').value = list.work_type;
+            document.getElementById('namesTextarea').value = list.names;
+            document.getElementById('deleteButtonContainer').style.display = 'flex';
+            document.getElementById('sandModal').classList.add('active');
+        }
+
+        document.getElementById('sandForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const editId = document.getElementById('editId').value;
+            const sandData = {
+                rop: document.getElementById('ropSelect').value,
+                date: document.getElementById('dateInput').value,
+                work_type: document.getElementById('workTypeSelect').value,
+                names: document.getElementById('namesTextarea').value,
+                checkboxes: {}
+            };
+            
+            try {
+                if (editId) {
+                    const list = sandLists.find(l => l.id === editId);
+                    if (list) {
+                        sandData.checkboxes = list.checkboxes ? JSON.parse(list.checkboxes) : {};
+                    }
+                    
+                    const response = await fetch(`${API_BASE_URL}/sand-lists/${editId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${currentUser.token}`
+                        },
+                        body: JSON.stringify(sandData)
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to update sand list');
+                } else {
+                    const response = await fetch(`${API_BASE_URL}/sand-lists`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${currentUser.token}`
+                        },
+                        body: JSON.stringify(sandData)
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to create sand list');
+                }
+                
+                closeSandModal();
+                loadSandLists();
+            } catch (error) {
+                console.error('Error saving sand list:', error);
+                alert('Ошибка при сохранении: ' + error.message);
+            }
+        });
+
+        async function deleteCurrentList() {
+            if (!currentListId) return;
+            
+            if (!confirm('Вы уверены, что хотите удалить этот список?')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/sand-lists/${currentListId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${currentUser.token}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Failed to delete sand list');
+                
+                closeSandModal();
+                loadSandLists();
+            } catch (error) {
+                console.error('Error deleting sand list:', error);
+                alert('Ошибка при удалении: ' + error.message);
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem(SESSION_KEY);
+            window.location.replace('login.html');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  postgres:
+    build:
+      context: .
+      dockerfile: Dockerfile.db
+    container_name: sand_postgres
+    environment:
+      POSTGRES_DB: sandtracker
+      POSTGRES_USER: sanduser
+      POSTGRES_PASSWORD: sandpass123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - sand_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sanduser -d sandtracker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sand_backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: sanduser
+      DB_PASSWORD: sandpass123
+      DB_NAME: sandtracker
+      PORT: "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - sand_network
+    restart: unless-stopped
+
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    container_name: sand_nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - sand_network
+    restart: unless-stopped
+
+networks:
+  sand_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
